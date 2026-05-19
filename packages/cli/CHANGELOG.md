@@ -1,5 +1,13 @@
 # vercel
 
+## 54.2.1
+
+### Patch Changes
+
+- c6fa2d1: Revert non-interactive Marketplace terms acceptance for `integration accept-terms`.
+
+  This change requires human interactive confirmation for terms acceptance and removes `--yes` from `integration accept-terms` guidance.
+
 ## 54.2.0
 
 ### Minor Changes
