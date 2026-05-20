@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import { build } from '../../src';
 import { prepareFilesystem } from './test-utils';
+import { lstat, readlink } from 'fs/promises';
+import { createRequire } from 'module';
+import { join } from 'path';
 
 describe.skipIf(process.platform === 'win32')('typescript realpath regression', () => {
   test('should build when a pnpm-style symlinked package is imported through both symlinked and real paths', async () => {
@@ -72,6 +75,25 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
         symlink: '.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib',
       },
     });
+
+    const workspaceLibPath = join(filesystem.workPath, 'node_modules/workspace-lib');
+    const workspaceLibStat = await lstat(workspaceLibPath);
+    expect(workspaceLibStat.isSymbolicLink()).toBe(true);
+    expect(await readlink(workspaceLibPath)).toBe(
+      '.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib'
+    );
+
+    const requireFromWorkPath = createRequire(
+      join(filesystem.workPath, 'package.json')
+    );
+    expect(
+      requireFromWorkPath.resolve('workspace-lib/package.json')
+    ).toBe(
+      join(
+        filesystem.workPath,
+        'node_modules/.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib/package.json'
+      )
+    );
 
     const buildResult = await expect(
       build({
