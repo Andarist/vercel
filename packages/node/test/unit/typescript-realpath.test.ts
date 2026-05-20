@@ -3,7 +3,7 @@ import { build } from '../../src';
 import { prepareFilesystem } from './test-utils';
 
 describe.skipIf(process.platform === 'win32')('typescript realpath regression', () => {
-  test('should build when a TypeScript module is imported through both real and symlinked paths', async () => {
+  test('should build when a pnpm-style symlinked package is imported through both symlinked and real paths', async () => {
     const filesystem = await prepareFilesystem({
       'package.json': JSON.stringify({
         private: true,
@@ -19,11 +19,14 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
         },
       }),
       'api/index.ts': `
-        import { createUser as createRealUser, User as RealUser } from '../packages/lib';
         import {
           createUser as createSymlinkedUser,
           User as SymlinkedUser,
         } from 'workspace-lib';
+        import {
+          createUser as createRealUser,
+          User as RealUser,
+        } from '../node_modules/.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib';
 
         const realUser: SymlinkedUser = createRealUser('vercel');
         const symlinkedUser: RealUser = createSymlinkedUser('bot');
@@ -32,12 +35,13 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
           res.end(\`\${realUser.name}:\${symlinkedUser.name}\`);
         }
       `,
-      'packages/lib/package.json': JSON.stringify({
+      'node_modules/.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib/package.json': JSON.stringify({
         name: 'workspace-lib',
+        version: '1.0.0',
         main: 'index.js',
         types: 'index.d.ts',
       }),
-      'packages/lib/index.js': `
+      'node_modules/.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib/index.js': `
         class User {
           #brand = true;
 
@@ -55,7 +59,7 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
           createUser,
         };
       `,
-      'packages/lib/index.d.ts': `
+      'node_modules/.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib/index.d.ts': `
         export declare class User {
           private readonly brand;
           readonly name: string;
@@ -65,7 +69,7 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
         export declare function createUser(name: string): User;
       `,
       'node_modules/workspace-lib': {
-        symlink: '../packages/lib',
+        symlink: '.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib',
       },
     });
 
