@@ -4,7 +4,8 @@ import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import type { Files } from '@vercel/build-utils';
 
-export type Fs = Record<string, Buffer | string | { copy: string }>;
+export type FsValue = Buffer | string | { copy: string } | { symlink: string };
+export type Fs = Record<string, FsValue>;
 
 export type Filesystem = {
   workPath: string;
@@ -21,18 +22,24 @@ export async function prepareFilesystem(
   const workPath = workPathPrefix ? join(directory, workPathPrefix) : directory;
   await fs.mkdir(workPath, { recursive: true });
   const fileRefs: Files = {};
+
   for (const [key, value] of Object.entries(files)) {
     const fullPath = join(workPath, key);
     await fs.mkdir(dirname(fullPath), { recursive: true });
+
     if (typeof value === 'string' || value instanceof Buffer) {
-      await fs.writeFile(join(workPath, key), value);
-    } else if (typeof value.copy === 'string') {
-      await fs.copyFile(join(workPath, value.copy), join(workPath, key));
+      await fs.writeFile(fullPath, value);
+    } else if ('copy' in value) {
+      await fs.copyFile(join(workPath, value.copy), fullPath);
+    } else if ('symlink' in value) {
+      await fs.symlink(value.symlink, fullPath, 'dir');
     }
+
     fileRefs[key] = await FileFsRef.fromFsPath({
-      fsPath: join(workPath, key),
+      fsPath: fullPath,
     });
   }
+
   return {
     workPath,
     repoRootPath: directory,

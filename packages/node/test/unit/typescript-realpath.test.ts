@@ -1,8 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { build } from '../../src';
 import { prepareFilesystem } from './test-utils';
-import { join } from 'path';
-import { mkdir, symlink } from 'fs/promises';
 
 describe.skipIf(process.platform === 'win32')('typescript realpath regression', () => {
   test('should build when a TypeScript module is imported through both real and symlinked paths', async () => {
@@ -66,14 +64,10 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
 
         export declare function createUser(name: string): User;
       `,
+      'node_modules/workspace-lib': {
+        symlink: '../packages/lib',
+      },
     });
-
-    await mkdir(join(filesystem.workPath, 'node_modules'), { recursive: true });
-    await symlink(
-      join(filesystem.workPath, 'packages/lib'),
-      join(filesystem.workPath, 'node_modules/workspace-lib'),
-      'dir'
-    );
 
     const buildResult = await expect(
       build({
