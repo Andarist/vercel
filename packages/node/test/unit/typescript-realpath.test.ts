@@ -21,7 +21,7 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
         },
       }),
       'api/index.ts': `
-        import { createUser as createRealUser, User as RealUser } from '../packages/lib/src/user';
+        import { createUser as createRealUser, User as RealUser } from '../packages/lib';
         import {
           createUser as createSymlinkedUser,
           User as SymlinkedUser,
@@ -36,18 +36,35 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
       `,
       'packages/lib/package.json': JSON.stringify({
         name: 'workspace-lib',
-        main: 'src/user',
+        main: 'index.js',
+        types: 'index.d.ts',
       }),
-      'packages/lib/src/user.ts': `
-        export class User {
-          private readonly brand = true;
+      'packages/lib/index.js': `
+        class User {
+          #brand = true;
 
-          constructor(public readonly name: string) {}
+          constructor(name) {
+            this.name = name;
+          }
         }
 
-        export function createUser(name: string) {
+        function createUser(name) {
           return new User(name);
         }
+
+        module.exports = {
+          User,
+          createUser,
+        };
+      `,
+      'packages/lib/index.d.ts': `
+        export declare class User {
+          private readonly brand;
+          readonly name: string;
+          constructor(name: string);
+        }
+
+        export declare function createUser(name: string): User;
       `,
     });
 
