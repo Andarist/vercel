@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { build } from '../../src';
+import { register } from '../../src/typescript';
 import { prepareFilesystem } from './test-utils';
 import { lstat, readlink } from 'fs/promises';
 import { createRequire } from 'module';
@@ -139,6 +140,16 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
         'node_modules/.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib/index.d.ts'
       )
     );
+
+    const compile = register({
+      basePath: filesystem.workPath,
+      project: containingFile,
+      files: true,
+      nodeVersionMajor: 22,
+    });
+    const source = ts.sys.readFile(containingFile);
+    expect(source).toBeDefined();
+    expect(() => compile(source!, containingFile)).not.toThrow();
 
     const buildResult = await expect(
       build({
