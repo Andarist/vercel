@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { build } from '../../src';
 import { prepareFilesystem } from './test-utils';
 import { join } from 'path';
-import { symlink } from 'fs/promises';
+import { mkdir, symlink } from 'fs/promises';
 
 describe.skipIf(process.platform === 'win32')('typescript realpath regression', () => {
   test('should build when a TypeScript module is imported through both real and symlinked paths', async () => {
@@ -21,19 +21,23 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
         },
       }),
       'api/index.ts': `
-        import { createUser as createRealUser } from '../packages/lib/src/user';
+        import { createUser as createRealUser, User as RealUser } from '../packages/lib/src/user';
         import {
           createUser as createSymlinkedUser,
           User as SymlinkedUser,
-        } from '../symlinked-lib/user';
+        } from 'workspace-lib';
 
         const realUser: SymlinkedUser = createRealUser('vercel');
-        const symlinkedUser: SymlinkedUser = createSymlinkedUser('bot');
+        const symlinkedUser: RealUser = createSymlinkedUser('bot');
 
         export default function handler(_req: unknown, res: { end(body: string): void }) {
           res.end(\`\${realUser.name}:\${symlinkedUser.name}\`);
         }
       `,
+      'packages/lib/package.json': JSON.stringify({
+        name: 'workspace-lib',
+        main: 'src/user',
+      }),
       'packages/lib/src/user.ts': `
         export class User {
           private readonly brand = true;
@@ -47,9 +51,10 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
       `,
     });
 
+    await mkdir(join(filesystem.workPath, 'node_modules'), { recursive: true });
     await symlink(
-      join(filesystem.workPath, 'packages/lib/src'),
-      join(filesystem.workPath, 'symlinked-lib'),
+      join(filesystem.workPath, 'packages/lib'),
+      join(filesystem.workPath, 'node_modules/workspace-lib'),
       'dir'
     );
 
