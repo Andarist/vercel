@@ -16,6 +16,7 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
           module: 'commonjs',
           moduleResolution: 'node',
           strict: true,
+          noEmitOnError: true,
           skipLibCheck: true,
         },
       }),
@@ -52,12 +53,14 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
       'dir'
     );
 
-    const buildResult = await build({
-      ...filesystem,
-      entrypoint: 'api/index.ts',
-      config: {},
-      meta: { skipDownload: true },
-    });
+    const buildResult = await expect(
+      build({
+        ...filesystem,
+        entrypoint: 'api/index.ts',
+        config: {},
+        meta: { skipDownload: true },
+      })
+    ).resolves.toBeDefined();
 
     expect(buildResult.output).toBeDefined();
     expect(buildResult.output.type).toBe('Lambda');
