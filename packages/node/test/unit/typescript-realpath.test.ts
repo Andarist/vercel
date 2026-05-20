@@ -4,6 +4,7 @@ import { prepareFilesystem } from './test-utils';
 import { lstat, readlink } from 'fs/promises';
 import { createRequire } from 'module';
 import { join } from 'path';
+import ts from 'typescript';
 
 describe.skipIf(process.platform === 'win32')('typescript realpath regression', () => {
   test('should build when a pnpm-style symlinked package is imported through both symlinked and real paths', async () => {
@@ -92,6 +93,50 @@ describe.skipIf(process.platform === 'win32')('typescript realpath regression', 
       join(
         filesystem.workPath,
         'node_modules/.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib/package.json'
+      )
+    );
+
+    const containingFile = join(filesystem.workPath, 'api/index.ts');
+    const compilerOptions = {
+      target: ts.ScriptTarget.ES2019,
+      module: ts.ModuleKind.CommonJS,
+      moduleResolution: ts.ModuleResolutionKind.NodeJs,
+      strict: true,
+      noEmitOnError: true,
+      skipLibCheck: true,
+    };
+
+    const resolvedWithTsSys = ts.resolveModuleName(
+      'workspace-lib',
+      containingFile,
+      compilerOptions,
+      ts.sys
+    );
+    expect(resolvedWithTsSys.resolvedModule?.resolvedFileName).toBe(
+      join(
+        filesystem.workPath,
+        'node_modules/.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib/index.d.ts'
+      )
+    );
+
+    const readFile = (path: string) => ts.sys.readFile(path);
+    const fileExists = (path: string) => ts.sys.fileExists(path);
+    const resolvedWithHostShape = ts.resolveModuleName(
+      'workspace-lib',
+      containingFile,
+      compilerOptions,
+      {
+        fileExists,
+        readFile,
+        directoryExists: ts.sys.directoryExists,
+        getDirectories: ts.sys.getDirectories,
+        realpath: ts.sys.realpath,
+      }
+    );
+    expect(resolvedWithHostShape.resolvedModule?.resolvedFileName).toBe(
+      join(
+        filesystem.workPath,
+        'node_modules/.pnpm/workspace-lib@1.0.0/node_modules/workspace-lib/index.d.ts'
       )
     );
 
